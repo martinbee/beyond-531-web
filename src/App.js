@@ -1,38 +1,47 @@
-import { useQuery, gql } from '@apollo/client';
+import { useMutation, useQuery, gql } from '@apollo/client';
 
-import logo from './logo.svg';
 import './App.css';
+import WorkoutForm from './WorkoutForm';
 
-const GET_USERS = gql`
-  query GetUsers {
-    users {
-      firstName
-      lastName
+const GET_ACTIVE_WORKOUTS = gql`
+  query GetActiveWorkouts {
+    activeWorkouts: workouts(isActive: true) {
+      id
+    }
+  }
+`;
+const COMPLETE_WORKOUT = gql`
+  mutation CompleteWorkout($input: CompleteWorkoutInput!) {
+    completeWorkout(input: $input) {
+      workout {
+        id
+      }
     }
   }
 `;
 
 function App() {
-  const { loading, error, data } = useQuery(GET_USERS);
+  const { data, error, loading } = useQuery(GET_ACTIVE_WORKOUTS);
+  const firstActiveWorkout = data?.activeWorkouts[0];
+
+  const [completeWorkout] = useMutation(COMPLETE_WORKOUT, {
+    variables: { input: { id: firstActiveWorkout?.id } },
+  });
 
   if (loading) return <p>Loading...</p>;
 
-  if (error) return <p>Error :(</p>;
+  if (error) return <p>Error :( {JSON.stringify(error)}</p>;
 
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>Hello {data.users[0]?.firstName}</p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      {!firstActiveWorkout ? (
+        <div>No Active Workouts</div>
+      ) : (
+        <>
+          <WorkoutForm workoutId={firstActiveWorkout?.id} />
+          <button onClick={completeWorkout}>Complete Workout</button>
+        </>
+      )}
     </div>
   );
 }
