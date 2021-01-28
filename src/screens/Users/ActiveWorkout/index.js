@@ -2,6 +2,7 @@ import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Typography from '@material-ui/core/Typography';
+import { useHistory, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 
 const CenteredCardContent = styled(CardContent)`
@@ -19,8 +20,14 @@ const StyledCardActions = styled.div`
 `;
 
 // wow this sucks
+// probably leave in users proper instead of here
 export default function ActiveWorkout({ activeWorkout, week }) {
+  const history = useHistory();
+  const { userId } = useParams();
   const hasActiveWorkout = Boolean(activeWorkout);
+  const goToWorkout = () => {
+    history.push(`/users/${userId}/workouts/${activeWorkout.id}`);
+  };
 
   return (
     <Card>
@@ -36,7 +43,7 @@ export default function ActiveWorkout({ activeWorkout, week }) {
         <StyledCardActions disableSpacing>
           {hasActiveWorkout ? (
             <>
-              <Button variant="contained" color="primary">
+              <Button onClick={goToWorkout} variant="contained" color="primary">
                 Go To
               </Button>
               <Button variant="outlined" color="secondary">
