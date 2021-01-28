@@ -1,7 +1,5 @@
 import { useQuery, gql } from '@apollo/client';
 import AppBar from '@material-ui/core/AppBar';
-import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
 import Container from '@material-ui/core/Container';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
@@ -10,8 +8,9 @@ import Logo from '@material-ui/icons/FitnessCenter';
 import { Switch, Route, useParams, useRouteMatch } from 'react-router-dom';
 
 import styled from 'styled-components';
-import History from '../History';
-import Workouts from '../Workouts';
+import ActiveWorkout from './ActiveWorkout';
+import History from './History';
+import Workouts from './Workouts';
 
 const Page = styled.div`
   display: flex;
@@ -64,7 +63,7 @@ export default function Users() {
 
   if (error) return <p>Error :( {JSON.stringify(error)}</p>;
 
-  const { activeWorkout } = data.user;
+  const { activeWorkout, week } = data.user;
 
   return (
     <Page>
@@ -76,10 +75,17 @@ export default function Users() {
         </SpacedToolbar>
       </AppBar>
       <Content maxWidth="sm">
-        <Card>
-          <CardContent>Testing</CardContent>
-        </Card>
-        {hookUpUsersRoutes(path)}
+        <Switch>
+          <Route path={`${path}/history`}>
+            <History />
+          </Route>
+          <Route path={`${path}/workouts/:workoutId`}>
+            <Workouts />
+          </Route>
+          <Route exact path={path}>
+            <ActiveWorkout activeWorkout={activeWorkout} week={week} />
+          </Route>
+        </Switch>
       </Content>
     </Page>
   );
