@@ -30,6 +30,22 @@ const GET_USER = gql`
         id
         liftType
       }
+      history {
+        coreSets {
+          completed
+          reps
+          weight
+        }
+        didFirstSetLast
+        didWarmUp
+        id
+        liftType
+        jokerSets {
+          completed
+          reps
+          weight
+        }
+      }
       id
       firstName
       lastName
@@ -37,17 +53,6 @@ const GET_USER = gql`
     }
   }
 `;
-
-const hookUpUsersRoutes = (path) => (
-  <Switch>
-    <Route path={`${path}/history`}>
-      <History />
-    </Route>
-    <Route path={`${path}/workouts/:workoutId`}>
-      <Workouts />
-    </Route>
-  </Switch>
-);
 
 const getFullName = ({ firstName, lastName }) => `${firstName} ${lastName}`;
 
@@ -63,7 +68,7 @@ export default function Users() {
 
   if (error) return <p>Error :( {JSON.stringify(error)}</p>;
 
-  const { activeWorkout, week } = data.user;
+  const { activeWorkout, history, week } = data.user;
 
   return (
     <Page>
@@ -77,7 +82,7 @@ export default function Users() {
       <Content maxWidth="sm">
         <Switch>
           <Route path={`${path}/history`}>
-            <History />
+            <History history={history} />
           </Route>
           <Route path={`${path}/workouts/:workoutId`}>
             <Workouts />
