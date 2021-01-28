@@ -3,12 +3,20 @@ import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
 import CardContent from '@material-ui/core/CardContent';
+import Divider from '@material-ui/core/Divider';
 import Typography from '@material-ui/core/Typography';
-import { Formik, Field } from 'formik';
+import { Formik, Field, FieldArray } from 'formik';
 import { useHistory, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 
 import Switch from './Switch';
+
+const FormSection = styled.div`
+  padding: 1rem;
+`;
+const FullWidthButton = styled(Button)`
+  width: 100%;
+`;
 
 const GET_WORKOUT = gql`
   query GetWorkout($id: ID!) {
@@ -19,8 +27,8 @@ const GET_WORKOUT = gql`
         reps
         weight
       }
-      didWarmUp
       didFirstSetLast
+      didWarmUp
       id
       liftType
       user {
@@ -31,25 +39,76 @@ const GET_WORKOUT = gql`
   }
 `;
 
-const COMPLETE_WORKOUT = gql`
-  mutation CompleteWorkout($input: CompleteWorkoutInput!) {
-    completeWorkout(input: $input) {
+const UPDATE_WORKOUT = gql`
+  mutation UpdateWorkout($input: UpdateWorkoutInput!) {
+    updateWorkout(input: $input) {
       workout {
+        active
+        coreSets {
+          completed
+          reps
+          weight
+        }
+        didFirstSetLast
+        didWarmUp
         id
       }
     }
   }
 `;
 
-const getInitialValues = ({ didWarmUp, didFirstSetLast }) => {
+const COMPLETE_WORKOUT = gql`
+  mutation CompleteWorkout($input: CompleteWorkoutInput!) {
+    completeWorkout(input: $input) {
+      workout {
+        id
+        user {
+          activeWorkout {
+            id
+            liftType
+          }
+          id
+        }
+      }
+    }
+  }
+`;
+
+const filterTypename = ({ __typename, ...rest }) => ({ ...rest });
+
+const getInitialValues = ({ coreSets, didWarmUp, didFirstSetLast }) => {
   return {
-    didWarmUp,
+    coreSets: coreSets.map(filterTypename),
     didFirstSetLast,
+    didWarmUp,
   };
 };
 
 const Workouts = () => {
-  const { workoutId } = useParams();
+  const history = useHistory();
+  const { userId, workoutId } = useParams();
+
+  const [updateWorkout] = useMutation(UPDATE_WORKOUT);
+  const [completeWorkout] = useMutation(COMPLETE_WORKOUT, {
+    variables: { input: { id: workoutId } },
+  });
+
+  const saveAndFinishWorkout = async (updates) => {
+    try {
+      await updateWorkout({
+        variables: {
+          input: {
+            id: workoutId,
+            updates,
+          },
+        },
+      });
+      await completeWorkout();
+      history.push(`/users/${userId}`);
+    } catch (e) {
+      console.log(e); // add toast
+    }
+  };
 
   const { data, error, loading } = useQuery(GET_WORKOUT, {
     variables: { id: workoutId },
@@ -62,8 +121,9 @@ const Workouts = () => {
   const { liftType, user } = data.workout;
   const initialValues = getInitialValues(data.workout);
 
+  // add a debounced save in this form
   return (
-    <Formik initialValues={initialValues} onSubmit={() => {}}>
+    <Formik initialValues={initialValues} onSubmit={saveAndFinishWorkout}>
       {({ handleSubmit, isSubmitting, values }) => (
         <form onSubmit={handleSubmit}>
           <Card>
@@ -71,17 +131,45 @@ const Workouts = () => {
               <Typography variant="h6">
                 Week {user.week} {liftType}
               </Typography>
-              <Field as={Switch} label="Warm up" name="didWarmUp" />
-              <Field
-                as={Switch}
-                label="First Set Last"
-                name="didFirstSetLast"
-              />
+
+              <FormSection>
+                <Field as={Switch} label="Warm up" name="didWarmUp" />
+              </FormSection>
+
+              <Divider />
+              <FormSection>
+                <Typography>Core Sets</Typography>
+                <FieldArray
+                  name="coreSets"
+                  render={() =>
+                    values.coreSets.map(({ reps, weight }, index) => (
+                      <Field
+                        as={Switch}
+                        label={`${weight} x ${reps}`}
+                        name={`coreSets[${index}].completed`}
+                      />
+                    ))
+                  }
+                />
+              </FormSection>
+              <Divider />
+              <FormSection>
+                <Field
+                  as={Switch}
+                  label="First Set Last"
+                  name="didFirstSetLast"
+                />
+              </FormSection>
             </CardContent>
             <CardActions>
-              <Button type="submit" disabled={isSubmitting}>
+              <FullWidthButton
+                color="primary"
+                disabled={isSubmitting}
+                type="submit"
+                variant="contained"
+              >
                 Submit
-              </Button>
+              </FullWidthButton>
             </CardActions>
           </Card>
         </form>

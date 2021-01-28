@@ -1,3 +1,4 @@
+import { useMutation, gql } from '@apollo/client';
 import Button from '@material-ui/core/Button';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
@@ -19,15 +20,80 @@ const StyledCardActions = styled.div`
   }
 `;
 
+const CREATE_WORKOUT = gql`
+  mutation CreateWorkout($input: CreateWorkoutInput!) {
+    createWorkout(input: $input) {
+      workout {
+        id
+        user {
+          activeWorkout {
+            id
+            liftType
+          }
+          id
+          week
+        }
+      }
+    }
+  }
+`;
+
+const COMPLETE_WORKOUT = gql`
+  mutation CompleteWorkout($input: CompleteWorkoutInput!) {
+    completeWorkout(input: $input) {
+      workout {
+        id
+        user {
+          activeWorkout {
+            id
+            liftType
+          }
+          id
+          week
+        }
+      }
+    }
+  }
+`;
+
 // wow this sucks
 // probably leave in users proper instead of here
 export default function ActiveWorkout({ activeWorkout, week }) {
   const history = useHistory();
   const { userId } = useParams();
-  const hasActiveWorkout = Boolean(activeWorkout);
-  const goToWorkout = () => {
-    history.push(`/users/${userId}/workouts/${activeWorkout.id}`);
+
+  const [completeWorkout] = useMutation(COMPLETE_WORKOUT, {
+    variables: { input: { id: activeWorkout?.id } },
+  });
+  const [createWorkout] = useMutation(CREATE_WORKOUT, {
+    variables: { input: { userId: userId } },
+  });
+
+  const createNewWorkoutAndGo = async () => {
+    try {
+      const { data } = await createWorkout();
+
+      const newWorkoutId = data?.createWorkout?.workout?.id;
+      if (newWorkoutId) goToWorkout(newWorkoutId);
+    } catch (e) {
+      // toast
+    }
   };
+
+  const completeCurrentWorkoutAndCreateNew = async () => {
+    try {
+      await completeWorkout();
+      await createNewWorkoutAndGo();
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const hasActiveWorkout = Boolean(activeWorkout);
+  const goToWorkout = (id) => {
+    history.push(`/users/${userId}/workouts/${id}`);
+  };
+  const goToActiveWorkout = () => goToWorkout(activeWorkout.id);
 
   return (
     <Card>
@@ -43,15 +109,27 @@ export default function ActiveWorkout({ activeWorkout, week }) {
         <StyledCardActions disableSpacing>
           {hasActiveWorkout ? (
             <>
-              <Button onClick={goToWorkout} variant="contained" color="primary">
+              <Button
+                onClick={goToActiveWorkout}
+                variant="contained"
+                color="primary"
+              >
                 Go To
               </Button>
-              <Button variant="outlined" color="secondary">
+              <Button
+                color="secondary"
+                onClick={completeCurrentWorkoutAndCreateNew}
+                variant="outlined"
+              >
                 Create New Workout
               </Button>
             </>
           ) : (
-            <Button variant="contained" color="primary">
+            <Button
+              color="primary"
+              onClick={createNewWorkoutAndGo}
+              variant="contained"
+            >
               Get Started By Creating A New Workout
             </Button>
           )}
